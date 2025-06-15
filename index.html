@@ -143,6 +143,7 @@
   let personalityPrompt = "";
   const chatKey = "deadman_chat_v1";
   const fileKey = "deadman_uploaded";
+
   const chatArea = document.getElementById("chatArea");
   const uploadArea = document.getElementById("uploadArea");
 
@@ -182,11 +183,11 @@
     const saved = getChatHistory();
     let lastDate = "";
     saved.forEach(entry => {
-      const currentDate = new Date(entry.date).toDateString();
-      const isNew = currentDate !== lastDate;
+      const entryDate = new Date(entry.date).toDateString();
+      const isNew = entryDate !== lastDate;
       appendMessage("user", entry.user, entry.time, entry.date, isNew);
-      appendMessage("bot", entry.bot, entry.botTime, entry.date, false);
-      lastDate = currentDate;
+      appendMessage("bot", entry.bot, entry.botTime, entry.date);
+      lastDate = entryDate;
     });
   }
 
@@ -237,41 +238,28 @@ ${cleanedText}
     const time = formatTime();
     const date = new Date().toISOString();
     appendMessage("user", userText, time, date);
-
     input.value = "";
 
     const chatHistory = getChatHistory();
 
     try {
-      const res = await fetch("https://backend-jade-one-46.vercel.app/api/chat", {
+      const res = await fetch("https://backend-uniqkrish326.vercel.app/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
           prompt: personalityPrompt,
-          messages: [{ role: "user", content: userText }]
+          messages: [
+            { role: "user", content: userText }
+          ]
         })
       });
 
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
       const data = await res.json();
-      let reply = data.reply || "⚠️ No response.";
-
-      // Add human variation if repeated
-      const prev = chatHistory[chatHistory.length - 1];
-      const isRepeated = prev && prev.user === userText && prev.bot === reply;
-
-      if (isRepeated && reply.length < 150) {
-        const variations = [
-          "Didn’t I just say this? Anyway, " + reply,
-          "Again? Fine. " + reply,
-          "Same question again? Here goes: " + reply,
-          "Already told you, but okay — " + reply,
-          reply + " (You already asked this tho!)"
-        ];
-        reply = variations[Math.floor(Math.random() * variations.length)];
-      }
-
+      const reply = data.reply || "⚠️ No response.";
       const botTime = formatTime();
       appendMessage("bot", reply, botTime, date);
 
@@ -279,7 +267,7 @@ ${cleanedText}
       saveChatHistory(chatHistory);
 
     } catch (err) {
-      console.error("Error:", err);
+      console.error("❌ Error:", err);
       appendMessage("bot", "⚠️ Error reaching server.", formatTime(), date);
     }
   }
