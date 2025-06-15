@@ -137,80 +137,80 @@
     </div>
   </div>
 
-  <script>
-    let personalityPrompt = "";
-    const API_KEY = "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"; // Replace with your key
-    const chatKey = "deadman_chat_v1";
-    const fileKey = "deadman_uploaded";
+<!-- your full HTML above remains unchanged -->
 
-    const chatArea = document.getElementById("chatArea");
-    const uploadArea = document.getElementById("uploadArea");
+<script>
+  let personalityPrompt = "";
+  const chatKey = "deadman_chat_v1";
+  const fileKey = "deadman_uploaded";
+  const chatArea = document.getElementById("chatArea");
+  const uploadArea = document.getElementById("uploadArea");
 
-    function formatTime() {
-      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  function formatTime() {
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function appendMessage(role, text, time, date, isNewDate = false) {
+    if (isNewDate) {
+      const dateDiv = document.createElement("div");
+      dateDiv.className = "date-divider";
+      dateDiv.innerText = formatDate(date);
+      chatArea.appendChild(dateDiv);
     }
 
-    function formatDate(dateStr) {
-      const d = new Date(dateStr);
-      return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    const msg = document.createElement("div");
+    msg.className = `msg ${role}`;
+    msg.innerHTML = `${text}<div class="time">${time}${role === "user" ? '<span class="tick">✓✓</span>' : ''}</div>`;
+    chatArea.appendChild(msg);
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
+
+  function saveChatHistory(chatArray) {
+    localStorage.setItem(chatKey, JSON.stringify(chatArray));
+  }
+
+  function getChatHistory() {
+    return JSON.parse(localStorage.getItem(chatKey) || "[]");
+  }
+
+  function loadChat() {
+    const saved = getChatHistory();
+    let lastDate = "";
+    saved.forEach(entry => {
+      const currentDate = new Date(entry.date).toDateString();
+      const isNew = currentDate !== lastDate;
+      appendMessage("user", entry.user, entry.time, entry.date, isNew);
+      appendMessage("bot", entry.bot, entry.botTime, entry.date, false);
+      lastDate = currentDate;
+    });
+  }
+
+  function confirmClear() {
+    if (confirm("Are you sure you want to clear the memory? This will erase uploaded file and chat.")) {
+      localStorage.removeItem(chatKey);
+      localStorage.removeItem(fileKey);
+      location.reload();
     }
+  }
 
-    function appendMessage(role, text, time, date, isNewDate = false) {
-      if (isNewDate) {
-        const dateDiv = document.createElement("div");
-        dateDiv.className = "date-divider";
-        dateDiv.innerText = formatDate(date);
-        chatArea.appendChild(dateDiv);
-      }
+  function uploadChat() {
+    const file = document.getElementById("fileInput").files[0];
+    if (!file) return;
 
-      const msg = document.createElement("div");
-      msg.className = `msg ${role}`;
-      msg.innerHTML = `${text}<div class="time">${time}${role === "user" ? '<span class="tick">✓✓</span>' : ''}</div>`;
-      chatArea.appendChild(msg);
-      chatArea.scrollTop = chatArea.scrollHeight;
-    }
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const rawText = e.target.result;
+      const cleanedText = rawText
+        .replace(/Messages to this chat.*\n/g, '')
+        .replace(/(\d{1,2}\/\d{1,2}\/\d{2,4}), \d{1,2}:\d{2} (AM|PM) - .*?: /g, '')
+        .slice(0, 2000);
 
-    function saveChatHistory(chatArray) {
-      localStorage.setItem(chatKey, JSON.stringify(chatArray));
-    }
-
-    function getChatHistory() {
-      return JSON.parse(localStorage.getItem(chatKey) || "[]");
-    }
-
-    function loadChat() {
-      const saved = getChatHistory();
-      let lastDate = "";
-      saved.forEach(entry => {
-        const entryDate = new Date(entry.date).toDateString();
-        const isNew = entryDate !== lastDate;
-        appendMessage("user", entry.user, entry.time, entry.date, isNew);
-        appendMessage("bot", entry.bot, entry.botTime, entry.date, false);
-        lastDate = entryDate;
-      });
-    }
-
-    function confirmClear() {
-      if (confirm("Are you sure you want to clear the memory? This will erase uploaded file and chat.")) {
-        localStorage.removeItem(chatKey);
-        localStorage.removeItem(fileKey);
-        location.reload();
-      }
-    }
-
-    function uploadChat() {
-      const file = document.getElementById("fileInput").files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const rawText = e.target.result;
-        const cleanedText = rawText
-          .replace(/Messages to this chat.*\n/g, '')
-          .replace(/(\d{1,2}\/\d{1,2}\/\d{2,4}), \d{1,2}:\d{2} (AM|PM) - .*?: /g, '')
-          .slice(0, 2000);
-
-        personalityPrompt = `
+      personalityPrompt = `
 You are NOT an AI. You are the person who sent these WhatsApp messages.
 You only know what’s in the messages. You cannot imagine, guess, or invent new things.
 
@@ -223,74 +223,86 @@ Messages:
 ${cleanedText}
 """`;
 
-        localStorage.setItem(fileKey, personalityPrompt);
-        uploadArea.style.display = "none";
-      };
-      reader.readAsText(file);
-    }
-
-    async function sendMessage() {
-      const input = document.getElementById("userInput");
-      const userText = input.value.trim();
-      if (!userText || !personalityPrompt) return;
-
-      const time = formatTime();
-      const date = new Date().toISOString();
-      appendMessage("user", userText, time, date);
-
-      input.value = "";
-
-      const chatHistory = getChatHistory();
-
-      try {
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${API_KEY}`
-          },
-          body: JSON.stringify({
-            model: "deepseek/deepseek-chat",
-            messages: [
-              { role: "system", content: personalityPrompt },
-              { role: "user", content: userText }
-            ]
-          })
-        });
-
-        const data = await res.json();
-        const reply = data.choices?.[0]?.message?.content || "⚠️ No response.";
-        const botTime = formatTime();
-        appendMessage("bot", reply, botTime, date);
-
-        chatHistory.push({ user: userText, bot: reply, time, botTime, date });
-        saveChatHistory(chatHistory);
-
-      } catch (err) {
-        console.error("Error:", err);
-        appendMessage("bot", "⚠️ Error reaching server.", formatTime(), date);
-      }
-    }
-
-    function handleEnter(event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        sendMessage();
-      }
-    }
-
-    // Init
-    window.onload = () => {
-      const savedPrompt = localStorage.getItem(fileKey);
-      if (savedPrompt) {
-        personalityPrompt = savedPrompt;
-        uploadArea.style.display = "none";
-      } else {
-        uploadArea.style.display = "block";
-      }
-      loadChat();
+      localStorage.setItem(fileKey, personalityPrompt);
+      uploadArea.style.display = "none";
     };
-  </script>
+    reader.readAsText(file);
+  }
+
+  async function sendMessage() {
+    const input = document.getElementById("userInput");
+    const userText = input.value.trim();
+    if (!userText || !personalityPrompt) return;
+
+    const time = formatTime();
+    const date = new Date().toISOString();
+    appendMessage("user", userText, time, date);
+
+    input.value = "";
+
+    const chatHistory = getChatHistory();
+
+    try {
+      const res = await fetch("https://backend-jade-one-46.vercel.app/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          prompt: personalityPrompt,
+          messages: [{ role: "user", content: userText }]
+        })
+      });
+
+      const data = await res.json();
+      let reply = data.reply || "⚠️ No response.";
+
+      // Add human variation if repeated
+      const prev = chatHistory[chatHistory.length - 1];
+      const isRepeated = prev && prev.user === userText && prev.bot === reply;
+
+      if (isRepeated && reply.length < 150) {
+        const variations = [
+          "Didn’t I just say this? Anyway, " + reply,
+          "Again? Fine. " + reply,
+          "Same question again? Here goes: " + reply,
+          "Already told you, but okay — " + reply,
+          reply + " (You already asked this tho!)"
+        ];
+        reply = variations[Math.floor(Math.random() * variations.length)];
+      }
+
+      const botTime = formatTime();
+      appendMessage("bot", reply, botTime, date);
+
+      chatHistory.push({ user: userText, bot: reply, time, botTime, date });
+      saveChatHistory(chatHistory);
+
+    } catch (err) {
+      console.error("Error:", err);
+      appendMessage("bot", "⚠️ Error reaching server.", formatTime(), date);
+    }
+  }
+
+  function handleEnter(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      sendMessage();
+    }
+  }
+
+  window.onload = () => {
+    const savedPrompt = localStorage.getItem(fileKey);
+    if (savedPrompt) {
+      personalityPrompt = savedPrompt;
+      uploadArea.style.display = "none";
+    } else {
+      uploadArea.style.display = "block";
+    }
+    loadChat();
+  };
+</script>
+
+
 </body>
 </html>
-
