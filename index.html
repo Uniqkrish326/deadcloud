@@ -275,11 +275,10 @@ ${cleanedText}
 🗣️ Speak like they never left. Not as AI. As memory that lingers.`;
 
   localStorage.setItem(fileKey, personalityPrompt);
-  document.getElementById("uploadStatus").innerText = "✅ File uploaded & memory saved!";
-  personalityPrompt = personalityPrompt;
   uploadArea.style.display = "none";
 };
 reader.readAsText(file);
+
 
 }
 
