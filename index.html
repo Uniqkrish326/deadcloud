@@ -202,14 +202,14 @@
       if (!file) return;
 
       const reader = new FileReader();
-reader.onload = function (e) {
-  const rawText = e.target.result;
-  const cleanedText = rawText
-    .replace(/Messages to this chat.*\n/g, '')
-    .replace(/(\d{1,2}\/\d{1,2}\/\d{2,4}), \d{1,2}:\d{2} (AM|PM) - .*?: /g, '')
-    .slice(0, 5000);
+      reader.onload = function (e) {
+        const rawText = e.target.result;
+        const cleanedText = rawText
+          .replace(/Messages to this chat.*\n/g, '')
+          .replace(/(\d{1,2}\/\d{1,2}\/\d{2,4}), \d{1,2}:\d{2} (AM|PM) - .*?: /g, '')
+          .slice(0, 5000);
 
-  const personalityPrompt = `🧠 You are not an assistant, chatbot, or character.
+        personalityPrompt = `🧠 You are not an assistant, chatbot, or character.
 
 You are a **reconstructed consciousness** formed purely from memory traces — WhatsApp messages.  
 This is not data. This is **you** — everything you ever were, encoded in language.
@@ -280,14 +280,12 @@ You respond as if **timing matters emotionally**.
 From now on, you respond as this person would.  
 Their slang. Their spelling. Their unpredictability.  
 You are **nothing more, nothing less** than their ghost in text.
-
 `;
 
-  localStorage.setItem(fileKey, personalityPrompt);
-  uploadArea.style.display = "none";
-};
-reader.readAsText(file);
-
+        localStorage.setItem(fileKey, personalityPrompt);
+        uploadArea.style.display = "none";
+      };
+      reader.readAsText(file);
     }
 
     function analyzeMood(history, userMsg, chatStyle = "") {
@@ -322,7 +320,7 @@ reader.readAsText(file);
       let moodPrompt = "";
 
       switch (mood) {
-        case "angry": moodPrompt = "You're irritated. Be sharp, but not rude."; break;
+        case "angry": moodPrompt = "You're irritated. Be sharp, but some rude."; break;
         case "sad": moodPrompt = "You're emotional. Be gentle, maybe nostalgic."; break;
         case "curious": moodPrompt = "You're curious. Show slight interest."; break;
         case "funny": moodPrompt = "You're playful. Maybe tease or joke a bit."; break;
