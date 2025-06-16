@@ -310,7 +310,7 @@ async function sendMessage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemma-3-1b-it:free",
+        model: "deepseek/deepseek-r1-distill-llama-70b:free",
         messages: [
           { role: "system", content: personalityPrompt },
           ...lastFew,
