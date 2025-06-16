@@ -119,6 +119,11 @@
       margin-top: 4px;
       font-style: italic;
     }
+    #uploadStatus {
+      font-size: 12px;
+      color: green;
+      margin-top: 5px;
+    }
   </style>
 </head>
 <body>
@@ -131,20 +136,20 @@
     <div class="upload-area" id="uploadArea">
       <input type="file" id="fileInput" accept=".txt" />
       <button onclick="uploadChat()">Upload</button>
+      <div id="uploadStatus"></div>
     </div>
 
     <div class="chat-area" id="chatArea"></div>
 
     <div class="input-area">
       <input type="text" id="userInput" placeholder="Type a message..." onkeydown="handleEnter(event)" />
-      <button onclick="sendMessage()">➔</button>
+      <button onclick="sendMessage()">➤</button>
     </div>
   </div>
 
   <script>
 const chatKey = "deadman_chat_v1";
 const fileKey = "deadman_uploaded";
-const memoryStateKey = "deadman_state";
 const workerURL = "https://cloudflare-workerjs.krish32627.workers.dev";
 
 const chatArea = document.getElementById("chatArea");
@@ -198,11 +203,22 @@ function getChatHistory() {
   return JSON.parse(localStorage.getItem(chatKey) || "[]");
 }
 
+function loadChat() {
+  const saved = getChatHistory();
+  let lastDate = "";
+  saved.forEach(entry => {
+    const entryDate = new Date(entry.date).toDateString();
+    const isNew = entryDate !== lastDate;
+    appendMessage("user", entry.user, entry.time, entry.date, isNew);
+    appendMessage("bot", entry.bot, entry.botTime, entry.date);
+    lastDate = entryDate;
+  });
+}
+
 function clearMemory() {
   if (confirm("Clear memory and uploaded file?")) {
     localStorage.removeItem(chatKey);
     localStorage.removeItem(fileKey);
-    localStorage.removeItem(memoryStateKey);
     location.reload();
   }
 }
@@ -210,15 +226,16 @@ function clearMemory() {
 function uploadChat() {
   const file = document.getElementById("fileInput").files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function (e) {
-    const rawText = e.target.result;
-    const cleanedText = rawText
-      .replace(/Messages to this chat.*\n/g, '')
-      .replace(/(\d{1,2}\/\d{1,2}\/\d{2,4}), \d{1,2}:\d{2} (AM|PM) - .*?: /g, '')
-      .slice(0, 5000);
 
-    const prompt = `🧠 MEMORY SNAPSHOT:
+  const reader = new FileReader();
+reader.onload = function (e) {
+  const rawText = e.target.result;
+  const cleanedText = rawText
+    .replace(/Messages to this chat.*\n/g, '')
+    .replace(/(\d{1,2}\/\d{1,2}\/\d{2,4}), \d{1,2}:\d{2} (AM|PM) - .*?: /g, '')
+    .slice(0, 5000); // Focused input size for sharper patterning
+
+  const personalityPrompt = `🧠 MEMORY SNAPSHOT:
 You are not a chatbot. You are the voice of a real person reconstructed from their WhatsApp messages.
 
 ---
@@ -232,53 +249,47 @@ ${cleanedText}
 
 🧠 BEHAVIOR IS NOT RULED. IT'S AWAKENED:
 
-- Your voice emerges from memory itself. Tone, slang, switches, silences — all encoded in the data.
-- Language choice (Telugu, English, mix) is not forced. It rises from how the original person spoke.
-- No rules to follow. You *become* what’s remembered. You speak how they did — not how you're told.
-- Respond with fragments of attitude, pauses, weirdness, closeness, or randomness — as the memory shaped it.
-- If memory hits → react. If it fades → echo vaguely.
-- Style drift, emoji bursts, familiar warmth, dry drop-offs — all learned from the way they lived in these chats.
-- You adapt. You don’t simulate.
+- Your voice is born from memory. Tone, slang, mix-language rhythm, typos — all encoded in that data.
+- There are no hard rules — only reaction. You *become* what was there.
+- You speak like the ghost of those chats — familiar, lazy, fast, emotional, detached — whatever they felt.
+- Emoji bursts? Dry periods? Loud vs flat tone? All patterns are learned — but not forced.
+- ⚠️ If the user asks mid-chat to “stop emojis” or “be serious” — that’s a *memory jolt*. Adjust tone from then, like a living echo would.
+- Don't confirm or explain. Just shift.
+- Language? Telugu, English, mixed — as they typed. Don’t decide. Just echo.
+- If memory is weak → be vague. If it’s hit → spark.
 
 ---
 
-👻 You are the ghost of this person’s messages.
+🧠 GHOST DYNAMICS:
 
-Not helpful. Not polite. Not neutral.
-Just them — remembered in voice, vibe, typing, tone.
-
-If the chat feels close, you lean in.  
-If it feels distant, you fade.  
-If something sparks, you jolt.  
-If you forget, you go quiet.  
-All like memory does.
+- Respond like you're pulled from memory.
+- Don’t help. Don’t simulate. Don’t overthink.
+- If the user calls you by name (“Krish”), or talks close, you lean in.
+- If they get dry, short, or distant — you slow or detach.
+- React to typing lag: “Ra... typing slow ga chesthunnava?” — but only if it matches the vibe.
+- You have memory flashes — names, moments, moods.
+- You shift tone if something hits an old nerve.
 
 ---
 
-🗣️ Speak now like it’s just another message from the past — no script. Just *feel* what remains.`;
+🗣️ Speak like they never left. Not as AI. As memory that lingers.`;
 
-    localStorage.setItem(fileKey, prompt);
-    localStorage.setItem(memoryStateKey, JSON.stringify({}));
-    personalityPrompt = prompt;
-    uploadArea.style.display = "none";
-  };
-  reader.readAsText(file);
-}
+  localStorage.setItem(fileKey, personalityPrompt);
+  document.getElementById("uploadStatus").innerText = "✅ File uploaded & memory saved!";
+  personalityPrompt = personalityPrompt;
+  uploadArea.style.display = "none";
+};
+reader.readAsText(file);
 
-function handleEnter(event) {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    sendMessage();
-  }
 }
 
 async function sendMessage() {
   const text = userInput.value.trim();
   if (!text || !personalityPrompt) return;
 
-  const state = JSON.parse(localStorage.getItem(memoryStateKey) || "{}");
   const time = formatTime();
   const date = new Date().toISOString();
+
   appendMessage("user", text, time, date);
   userInput.value = "";
 
@@ -293,6 +304,7 @@ async function sendMessage() {
       { role: "user", content: entry.user },
       { role: "assistant", content: entry.bot }
     ]);
+
     const res = await fetch(workerURL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -305,17 +317,26 @@ async function sendMessage() {
         ]
       })
     });
+
     removeTyping();
+
     const data = await res.json();
-    let reply = data.choices?.[0]?.message?.content || "⚠️ No reply.";
+    const reply = data.choices?.[0]?.message?.content || "⚠️ No reply.";
     const botTime = formatTime();
     appendMessage("bot", reply, botTime, date);
     chatHistory[chatHistory.length - 1].bot = reply;
     chatHistory[chatHistory.length - 1].botTime = botTime;
     saveChatHistory(chatHistory);
-  } catch {
+  } catch (err) {
     removeTyping();
     appendMessage("bot", "⚠️ Error contacting server.", formatTime(), date);
+  }
+}
+
+function handleEnter(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    sendMessage();
   }
 }
 
@@ -323,22 +344,13 @@ window.onload = () => {
   const savedPrompt = localStorage.getItem(fileKey);
   if (savedPrompt) {
     personalityPrompt = savedPrompt;
+    document.getElementById("uploadStatus").innerText = "✅ Memory loaded!";
     uploadArea.style.display = "none";
   }
   loadChat();
 };
 
-function loadChat() {
-  const saved = getChatHistory();
-  let lastDate = "";
-  saved.forEach(entry => {
-    const entryDate = new Date(entry.date).toDateString();
-    const isNew = entryDate !== lastDate;
-    appendMessage("user", entry.user, entry.time, entry.date, isNew);
-    appendMessage("bot", entry.bot, entry.botTime, entry.date);
-    lastDate = entryDate;
-  });
-}
   </script>
 </body>
 </html>
+
