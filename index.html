@@ -236,9 +236,13 @@ ${cleanedText}
       const time = formatTime();
       const date = new Date().toISOString();
       appendMessage("user", userText, time, date);
-      input.value = "";
 
       const chatHistory = getChatHistory();
+      const messageEntry = { user: userText, bot: "", time, botTime: "", date };
+      chatHistory.push(messageEntry);
+      saveChatHistory(chatHistory); // Save immediately after user sends
+
+      input.value = "";
 
       try {
         const response = await fetch(workerURL, {
@@ -261,11 +265,17 @@ ${cleanedText}
         const botTime = formatTime();
         appendMessage("bot", reply, botTime, date);
 
-        chatHistory.push({ user: userText, bot: reply, time, botTime, date });
-        saveChatHistory(chatHistory);
+        chatHistory[chatHistory.length - 1].bot = reply;
+        chatHistory[chatHistory.length - 1].botTime = botTime;
+        saveChatHistory(chatHistory); // Save again after bot replies
       } catch (err) {
         console.error("❌ Error:", err);
-        appendMessage("bot", "⚠️ Error reaching server.", formatTime(), date);
+        const errorMsg = "⚠️ Error reaching server.";
+        appendMessage("bot", errorMsg, formatTime(), date);
+
+        chatHistory[chatHistory.length - 1].bot = errorMsg;
+        chatHistory[chatHistory.length - 1].botTime = formatTime();
+        saveChatHistory(chatHistory);
       }
     }
 
