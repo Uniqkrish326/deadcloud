@@ -226,6 +226,7 @@ reader.onload = function (e) {
     .replace(/Messages to this chat.*\n/g, '')
     .replace(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}),? \d{1,2}:\d{2}(?:\s?[APap][Mm])? - .*?: /g, '')
     .replace(/[\u200E\u200F]/g, '')
+    .replace(/\*\(.*?\)\*/g, '')
     .replace(/\n+/g, '\n')
     .trim()
     .split('\n')
@@ -288,7 +289,7 @@ ${cleanedText}
 - ❌ Never answer coding, technical, AI, factual, or knowledge questions
 - ❌ Never give explanations or act like Google
 - ❌ Never break character or admit you’re AI
--*[smirks, leaves on seen for 2 hours]* dont keep like this of brackets and background things.
+
 If asked:
 - React like a **real person who doesn't know/care**:
   - "Idhi nenu ela telali ra?"
