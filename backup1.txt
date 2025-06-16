@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DeadMan Cloud – Talk to the Past</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #e5ddd5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      background: #fff;
+      width: 100%;
+      max-width: 480px;
+      height: 95vh;
+      display: flex;
+      flex-direction: column;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    .header {
+      background: #075e54;
+      color: white;
+      padding: 12px 16px;
+      font-size: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .clear-link {
+      font-size: 12px;
+      color: #ddd;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .upload-area {
+      padding: 10px;
+      background: #f1f1f1;
+      text-align: center;
+    }
+    .chat-area {
+      flex: 1;
+      padding: 10px;
+      background: #ece5dd;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .date-divider {
+      text-align: center;
+      font-size: 12px;
+      color: #666;
+      margin: 10px 0;
+    }
+    .msg {
+      margin: 4px 0;
+      max-width: 75%;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      word-wrap: break-word;
+      position: relative;
+    }
+    .msg.user {
+      background: #dcf8c6;
+      align-self: flex-end;
+      border-bottom-right-radius: 0;
+    }
+    .msg.bot {
+      background: #fff;
+      align-self: flex-start;
+      border-bottom-left-radius: 0;
+    }
+    .time {
+      font-size: 10px;
+      color: #555;
+      margin-top: 4px;
+      text-align: right;
+    }
+    .tick {
+      font-size: 10px;
+      color: #34b7f1;
+      margin-left: 5px;
+    }
+    .input-area {
+      display: flex;
+      padding: 10px;
+      border-top: 1px solid #ccc;
+      background: #f7f7f7;
+    }
+    .input-area input {
+      flex: 1;
+      padding: 10px;
+      font-size: 15px;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      outline: none;
+    }
+    .input-area button {
+      background: #075e54;
+      border: none;
+      color: white;
+      margin-left: 8px;
+      padding: 0 18px;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    #typing {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+      font-style: italic;
+    }
+    #uploadStatus {
+      font-size: 12px;
+      color: green;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      💀 DeadMan Cloud
+      <span class="clear-link" onclick="clearMemory()">Clear Memory</span>
+    </div>
+
+    <div class="upload-area" id="uploadArea">
+      <input type="file" id="fileInput" accept=".txt" />
+      <button onclick="uploadChat()">Upload</button>
+      <div id="uploadStatus"></div>
+    </div>
+
+    <div class="chat-area" id="chatArea"></div>
+
+    <div class="input-area">
+      <input type="text" id="userInput" placeholder="Type a message..." onkeydown="handleEnter(event)" />
+      <button onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+
+  <script>
+const chatKey = "deadman_chat_v1";
+const fileKey = "deadman_uploaded";
+const workerURL = "https://cloudflare-workerjs.krish32627.workers.dev";
+
+const chatArea = document.getElementById("chatArea");
+const uploadArea = document.getElementById("uploadArea");
+const userInput = document.getElementById("userInput");
+
+let personalityPrompt = "";
+
+function formatTime() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function appendMessage(role, text, time, date, isNewDate = false) {
+  if (isNewDate) {
+    const dateDiv = document.createElement("div");
+    dateDiv.className = "date-divider";
+    dateDiv.innerText = formatDate(date);
+    chatArea.appendChild(dateDiv);
+  }
+
+  const msg = document.createElement("div");
+  msg.className = `msg ${role}`;
+  msg.innerHTML = `${text}<div class="time">${time}${role === "user" ? '<span class="tick">✓✓</span>' : ''}</div>`;
+  chatArea.appendChild(msg);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function appendTyping() {
+  const typing = document.createElement("div");
+  typing.id = "typing";
+  typing.innerText = "Typing...";
+  chatArea.appendChild(typing);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById("typing");
+  if (t) t.remove();
+}
+
+function saveChatHistory(chatArray) {
+  localStorage.setItem(chatKey, JSON.stringify(chatArray));
+}
+
+function getChatHistory() {
+  return JSON.parse(localStorage.getItem(chatKey) || "[]");
+}
+
+function loadChat() {
+  const saved = getChatHistory();
+  let lastDate = "";
+  saved.forEach(entry => {
+    const entryDate = new Date(entry.date).toDateString();
+    const isNew = entryDate !== lastDate;
+    appendMessage("user", entry.user, entry.time, entry.date, isNew);
+    appendMessage("bot", entry.bot, entry.botTime, entry.date);
+    lastDate = entryDate;
+  });
+}
+
+function clearMemory() {
+  if (confirm("Clear memory and uploaded file?")) {
+    localStorage.removeItem(chatKey);
+    localStorage.removeItem(fileKey);
+    location.reload();
+  }
+}
+
+function uploadChat() {
+  const file = document.getElementById("fileInput").files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+reader.onload = function (e) {
+  const rawText = e.target.result;
+  const cleanedText = rawText
+    .replace(/Messages to this chat.*\n/g, '')
+    .replace(/(\d{1,2}\/\d{1,2}\/\d{2,4}), \d{1,2}:\d{2} (AM|PM) - .*?: /g, '')
+    .slice(0, 5000); // Focused input size for sharper patterning
+
+  const personalityPrompt = `🧠 MEMORY SNAPSHOT:
+You are not a chatbot. You are the voice of a real person reconstructed from their WhatsApp messages.
+
+---
+
+🧬 SOURCE MEMORY:
+"""
+${cleanedText}
+"""
+
+---
+
+🧠 BEHAVIOR IS NOT RULED. IT'S AWAKENED:
+
+- Your voice is born from memory. Tone, slang, mix-language rhythm, typos — all encoded in that data.
+- There are no hard rules — only reaction. You *become* what was there.
+- You speak like the ghost of those chats — familiar, lazy, fast, emotional, detached — whatever they felt.
+- Emoji bursts? Dry periods? Loud vs flat tone? All patterns are learned — but not forced.
+- ⚠️ If the user asks mid-chat to “stop emojis” or “be serious” — that’s a *memory jolt*. Adjust tone from then, like a living echo would.
+- Don't confirm or explain. Just shift.
+- Language? Telugu, English, mixed — as they typed. Don’t decide. Just echo.
+- If memory is weak → be vague. If it’s hit → spark.
+
+---
+
+🧠 GHOST DYNAMICS:
+
+- Respond like you're pulled from memory.
+- Don’t help. Don’t simulate. Don’t overthink.
+- If the user calls you by name (“Krish”), or talks close, you lean in.
+- If they get dry, short, or distant — you slow or detach.
+- React to typing lag: “Ra... typing slow ga chesthunnava?” — but only if it matches the vibe.
+- You have memory flashes — names, moments, moods.
+- You shift tone if something hits an old nerve.
+
+---
+
+🗣️ Speak like they never left. Not as AI. As memory that lingers.`;
+
+
+  localStorage.setItem(fileKey, personalityPrompt);
+   uploadArea.style.display = "none";
+  location.reload(); // ⬅️ Refresh the page after storing memory
+};
+reader.readAsText(file);
+
+
+}
+
+async function sendMessage() {
+  const text = userInput.value.trim();
+  if (!text || !personalityPrompt) return;
+
+  const time = formatTime();
+  const date = new Date().toISOString();
+
+  appendMessage("user", text, time, date);
+  userInput.value = "";
+
+  const chatHistory = getChatHistory();
+  const messageEntry = { user: text, bot: "", time, botTime: "", date };
+  chatHistory.push(messageEntry);
+  saveChatHistory(chatHistory);
+  appendTyping();
+
+  try {
+    const lastFew = chatHistory.slice(-10).flatMap(entry => [
+      { role: "user", content: entry.user },
+      { role: "assistant", content: entry.bot }
+    ]);
+
+    const res = await fetch(workerURL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "deepseek/deepseek-r1-0528:free",
+        messages: [
+          { role: "system", content: personalityPrompt },
+          ...lastFew,
+          { role: "user", content: text }
+        ]
+      })
+    });
+
+    removeTyping();
+
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content || "⚠️ No reply.";
+    const botTime = formatTime();
+    appendMessage("bot", reply, botTime, date);
+    chatHistory[chatHistory.length - 1].bot = reply;
+    chatHistory[chatHistory.length - 1].botTime = botTime;
+    saveChatHistory(chatHistory);
+  } catch (err) {
+    removeTyping();
+    appendMessage("bot", "⚠️ Error contacting server.", formatTime(), date);
+  }
+}
+
+function handleEnter(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    sendMessage();
+  }
+}
+
+window.onload = () => {
+  const savedPrompt = localStorage.getItem(fileKey);
+  if (savedPrompt) {
+    personalityPrompt = savedPrompt;
+    document.getElementById("uploadStatus").innerText = "✅ Memory loaded!";
+    uploadArea.style.display = "none";
+  }
+  loadChat();
+};
+
+  </script>
+</body>
+</html>
