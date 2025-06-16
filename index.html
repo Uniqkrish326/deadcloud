@@ -310,7 +310,7 @@ async function sendMessage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "mistralai/magistral-small-2506",
+        model: "deepseek-ai/deepseek-chat",
         messages: [
           { role: "system", content: personalityPrompt },
           ...lastFew,
