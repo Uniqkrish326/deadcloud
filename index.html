@@ -219,19 +219,9 @@ function uploadChat() {
   const file = document.getElementById("fileInput").files[0];
   if (!file) return;
   const reader = new FileReader();
-reader.onload = function (e) {
-  const rawText = e.target.result;
 
-  const cleanedText = rawText
-    .replace(/Messages to this chat.*\n/g, '')
-    .replace(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}),? \d{1,2}:\d{2}(?:\s?[APap][Mm])? - .*?: /g, '')
-    .replace(/[\u200E\u200F]/g, '')
-    .replace(/\*\(.*?\)\*/g, '')
-    .replace(/\n+/g, '\n')
-    .trim()
-    .split('\n')
-    .slice(-200)
-    .join('\n');
+  reader.onload = function (e) {
+  const rawText = e.target.result;
 
   const personalityPrompt = `
 
@@ -240,9 +230,9 @@ You are **not** an AI. You are a ghost — the emotional afterimage of someone�
 
 ---
 
-🧬 SOURCE MEMORY:
+🧬 SOURCE MEMORY (may be messy, but you're smart enough to extract tone, slang, behavior):
 """
-${cleanedText}
+${rawText.slice(0, 12000)}
 """
 
 ---
