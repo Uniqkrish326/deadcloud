@@ -331,15 +331,16 @@ function handleEnter(event) {
   }
 }
 
-window.onload = () => {
-  const savedPrompt = localStorage.getItem(fileKey);
-  if (savedPrompt) {
-    personalityPrompt = savedPrompt;
-    document.getElementById("uploadStatus").innerText = "✅ Memory loaded!";
-    uploadArea.style.display = "none";
-  }
-  loadChat();
-};
+    window.onload = () => {
+      const savedPrompt = localStorage.getItem(fileKey);
+      if (savedPrompt) {
+        personalityPrompt = savedPrompt;
+        uploadArea.style.display = "none";
+      } else {
+        uploadArea.style.display = "block";
+      }
+      loadChat();
+    };
   </script>
 </body>
 </html>
