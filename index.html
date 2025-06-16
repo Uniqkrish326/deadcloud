@@ -140,6 +140,7 @@
     let personalityPrompt = "";
     const chatKey = "deadman_chat_v1";
     const fileKey = "deadman_uploaded";
+    const workerURL = "https://cloudflare-workerjs.krish32627.workers.dev"; // ⬅️ Replace with your actual Worker URL
 
     const chatArea = document.getElementById("chatArea");
     const uploadArea = document.getElementById("uploadArea");
@@ -240,11 +241,10 @@ ${cleanedText}
       const chatHistory = getChatHistory();
 
       try {
-        const response = await fetch("https://corsproxy.io/?" + encodeURIComponent("https://openrouter.ai/api/v1/chat/completions"), {
+        const response = await fetch(workerURL, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer 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" // 🔁 replace with your key
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({
             model: "deepseek-chat",
@@ -265,7 +265,7 @@ ${cleanedText}
         saveChatHistory(chatHistory);
       } catch (err) {
         console.error("❌ Error:", err);
-        appendMessage("bot", "⚠️ Error reaching OpenRouter.", formatTime(), date);
+        appendMessage("bot", "⚠️ Error reaching server.", formatTime(), date);
       }
     }
 
