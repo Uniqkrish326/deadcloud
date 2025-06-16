@@ -310,7 +310,7 @@ async function sendMessage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "sarvamai/sarvam-m:free",
+        model: "deepseek/deepseek-chat-v3-0324:free",
         messages: [
           { role: "system", content: personalityPrompt },
           ...lastFew,
