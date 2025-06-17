@@ -225,20 +225,12 @@ reader.onload = function (e) {
 
   const cleanedText = [...new Set(
     rawText
-      // Remove WhatsApp header (like "Messages to this chat are now secured...")
       .replace(/Messages to this chat.*\n/g, '')
-      // Remove timestamps and names
       .replace(/(\d{1,2}\/\d{1,2}\/\d{2,4}), \d{1,2}:\d{2}(?: ?[AP]M)? - .*?: /g, '')
-      // Split into lines
       .split('\n')
   )]
-  // Join back unique lines
   .join('\n')
-  // Keep last 5000 characters
   .slice(-5000);
-
-  console.log(cleanedText); // You can use this in your prompt
-};
 
   const personalityPrompt = `🧠 MEMORY SNAPSHOT:
 You are not a chatbot. You are the voice of a real person reconstructed from their WhatsApp messages.
